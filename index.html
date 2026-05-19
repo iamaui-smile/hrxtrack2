@@ -669,7 +669,7 @@ function renderToday() {
     const ph = getPhaseForDate(ds);
     const dp = (ph !== null) && PLAN[ph] ? PLAN[ph][i] : null;
     const tp = dp ? dp.type : 'rest';
-    return `<div class="week-day ${isSelected?'today-day':''}" onclick="jumpToDate('${ds}')" style="cursor:pointer;${isToday&&!isSelected?'border-color:#444;':''}>
+    return `<div class="week-day ${isSelected?'today-day':''}" onclick="jumpToDate('${ds}')" style="cursor:pointer;${isToday&&!isSelected?'border-color:#444;':''}">
       <div class="wd-name">${dayNames[i]}</div>
       <div class="wd-date" style="${isToday?'color:var(--accent);font-weight:600':''}">${d.getDate()}</div>
       <div class="wd-dot ${tp}"></div>
