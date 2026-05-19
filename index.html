@@ -103,7 +103,8 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,'Helvetica
 input,select,textarea{background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:10px 12px;font-size:14px;width:100%;}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);}
 textarea{resize:vertical;min-height:70px;}
-.ex-row{display:grid;grid-template-columns:1fr 60px 70px 80px 30px;gap:6px;align-items:center;margin-bottom:8px;}
+.ex-row{display:grid;grid-template-columns:1fr 70px 30px;gap:6px;align-items:center;margin-bottom:8px;}
+.ex-row.strength-row{grid-template-columns:1fr 60px 70px 80px 30px;}
 .ex-row input{font-size:13px;padding:8px;}
 .rm-btn{width:30px;height:30px;background:var(--bg4);border:1px solid var(--border);border-radius:4px;color:var(--muted);cursor:pointer;font-size:16px;flex-shrink:0;}
 .btn-primary{background:var(--accent);color:#000;border:none;border-radius:6px;padding:12px 20px;font-family:'Courier New',monospace;font-size:13px;letter-spacing:1px;font-weight:700;cursor:pointer;width:100%;margin-top:4px;}
@@ -157,7 +158,7 @@ textarea{resize:vertical;min-height:70px;}
 .empty-text{font-size:13px;color:var(--muted);font-family:'Courier New',monospace;}
 
 @media(max-width:380px){
-  .ex-row{grid-template-columns:1fr 55px 60px 70px 28px;}
+  .ex-row.strength-row{grid-template-columns:1fr 55px 60px 70px 28px;}
 }
 </style>
 </head>
@@ -216,7 +217,7 @@ textarea{resize:vertical;min-height:70px;}
   <div class="form-row">
     <div class="form-group"><label class="form-label">วันที่</label><input type="date" id="l-date"></div>
     <div class="form-group"><label class="form-label">ประเภท</label>
-      <select id="l-type"><option value="strength">Strength</option><option value="cardio">Cardio</option><option value="mixed">Mixed</option><option value="rest">Recovery</option></select>
+      <select id="l-type" onchange="updateExFormLayout()"><option value="strength">Strength</option><option value="cardio">Cardio</option><option value="mixed">Mixed</option><option value="rest">Recovery</option></select>
     </div>
   </div>
   <div class="form-row">
@@ -227,9 +228,10 @@ textarea{resize:vertical;min-height:70px;}
   </div>
   <hr class="divider">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-    <div style="font-size:10px;font-family:'Courier New',monospace;color:var(--muted);letter-spacing:1px;">EXERCISES</div>
+    <div style="font-size:10px;font-family:'Courier New',monospace;color:var(--muted);letter-spacing:1px;">EXERCISES / STATIONS</div>
     <button class="btn-sm" onclick="addExRow()">+ ADD</button>
   </div>
+  <div id="ex-col-head" style="display:grid;gap:6px;padding:0 0 4px;font-size:9px;font-family:'Courier New',monospace;color:var(--muted);letter-spacing:1px;"></div>
   <div id="ex-list"></div>
   <hr class="divider">
   <div class="form-group"><label class="form-label">Notes</label><textarea id="l-notes" placeholder="ความรู้สึก, สิ่งที่สังเกต..."></textarea></div>
@@ -621,6 +623,7 @@ function prefillLog() {
   document.getElementById('l-type').value = dp.type === 'rest' ? 'rest' : dp.type;
   document.getElementById('l-phase').value = ph;
   document.getElementById('ex-list').innerHTML = '';
+  updateExFormLayout();
   dp.exercises.forEach(function(ex) { addExRow(ex.name); });
   goPage('log');
 }
@@ -628,15 +631,70 @@ function prefillLog() {
 // ============================================================
 // LOG
 // ============================================================
+function isStrengthType() {
+  var t = document.getElementById('l-type').value;
+  return t === 'strength' || t === 'mixed';
+}
+
+function updateExFormLayout() {
+  var isStr = isStrengthType();
+  var head = document.getElementById('ex-col-head');
+  if (isStr) {
+    head.style.gridTemplateColumns = '1fr 60px 70px 80px 30px';
+    head.innerHTML = '<span>Exercise</span><span>Sets</span><span>Reps</span><span>Weight (kg)</span><span></span>';
+  } else {
+    head.style.gridTemplateColumns = '1fr 70px 30px';
+    head.innerHTML = '<span>Exercise / Station</span><span>เวลา / ระยะ</span><span></span>';
+  }
+  // update existing rows
+  document.querySelectorAll('#ex-list .ex-row').forEach(function(row) {
+    rebuildRow(row, isStr);
+  });
+}
+
+function rebuildRow(row, isStr) {
+  var inputs = row.querySelectorAll('input');
+  var name = inputs[0] ? inputs[0].value : '';
+  var sets = inputs[1] ? inputs[1].value : '';
+  var reps = inputs[2] ? inputs[2].value : '';
+  var wt   = inputs[3] ? inputs[3].value : '';
+  var time = inputs[1] && !isStr ? inputs[1].value : '';
+  if (isStr) {
+    row.className = 'ex-row strength-row';
+    row.innerHTML =
+      '<input type="text" placeholder="ชื่อท่า" value="' + name + '" list="ex-suggestions">' +
+      '<input type="number" placeholder="Sets" min="1" value="' + sets + '">' +
+      '<input type="text" placeholder="Reps" value="' + reps + '">' +
+      '<input type="text" placeholder="kg" value="' + wt + '">' +
+      '<button class="rm-btn" onclick="this.parentElement.remove()">×</button>';
+  } else {
+    row.className = 'ex-row';
+    row.innerHTML =
+      '<input type="text" placeholder="ชื่อท่า / station" value="' + name + '" list="ex-suggestions">' +
+      '<input type="text" placeholder="นาที / km / m" value="' + time + '">' +
+      '<button class="rm-btn" onclick="this.parentElement.remove()">×</button>';
+  }
+}
+
 function addExRow(name) {
   var list = document.getElementById('ex-list');
   var row = document.createElement('div');
-  row.className = 'ex-row';
-  row.innerHTML = '<input type="text" placeholder="ชื่อท่า" value="' + (name||'') + '" list="ex-suggestions">' +
-    '<input type="number" placeholder="Sets" min="1">' +
-    '<input type="text" placeholder="Reps/m">' +
-    '<input type="text" placeholder="kg/นาที">' +
-    '<button class="rm-btn" onclick="this.parentElement.remove()">×</button>';
+  var isStr = isStrengthType();
+  if (isStr) {
+    row.className = 'ex-row strength-row';
+    row.innerHTML =
+      '<input type="text" placeholder="ชื่อท่า" value="' + (name||'') + '" list="ex-suggestions">' +
+      '<input type="number" placeholder="Sets" min="1">' +
+      '<input type="text" placeholder="Reps">' +
+      '<input type="text" placeholder="kg">' +
+      '<button class="rm-btn" onclick="this.parentElement.remove()">×</button>';
+  } else {
+    row.className = 'ex-row';
+    row.innerHTML =
+      '<input type="text" placeholder="ชื่อท่า / station" value="' + (name||'') + '" list="ex-suggestions">' +
+      '<input type="text" placeholder="นาที / km / m">' +
+      '<button class="rm-btn" onclick="this.parentElement.remove()">×</button>';
+  }
   list.appendChild(row);
 }
 
@@ -647,19 +705,27 @@ function saveWorkout() {
   var dur = parseInt(document.getElementById('l-dur').value) || 0;
   var phase = parseInt(document.getElementById('l-phase').value) || 0;
   var notes = document.getElementById('l-notes').value;
+  var isStr = isStrengthType();
   var exercises = [];
   document.querySelectorAll('#ex-list .ex-row').forEach(function(row) {
     var inputs = row.querySelectorAll('input');
-    var name = inputs[0].value.trim();
-    if (name) exercises.push({ name:name, sets:inputs[1].value||'-', reps:inputs[2].value||'-', weight:inputs[3].value||'-' });
+    var name = inputs[0] ? inputs[0].value.trim() : '';
+    if (!name) return;
+    if (isStr) {
+      exercises.push({ name:name, sets:inputs[1]?inputs[1].value:'-', reps:inputs[2]?inputs[2].value:'-', weight:inputs[3]?inputs[3].value:'-' });
+    } else {
+      exercises.push({ name:name, sets:'-', reps:inputs[1]?inputs[1].value:'-', weight:'-' });
+    }
   });
   workouts.unshift({ id:Date.now(), date:date, type:type, duration:dur, phase:phase, exercises:exercises, notes:notes });
   saveData();
   document.getElementById('ex-list').innerHTML = '';
   document.getElementById('l-notes').value = '';
   document.getElementById('l-dur').value = '';
-  addExRow();
+  document.getElementById('l-type').value = 'strength';
   document.getElementById('l-date').value = new Date().toISOString().split('T')[0];
+  updateExFormLayout();
+  addExRow();
   renderDash(); renderHistory(); renderPR();
   goPage('dash');
 }
@@ -808,6 +874,7 @@ function importData(input) {
 // INIT
 // ============================================================
 document.getElementById('l-date').value = new Date().toISOString().split('T')[0];
+updateExFormLayout();
 addExRow();
 renderDash();
 renderHistory();
